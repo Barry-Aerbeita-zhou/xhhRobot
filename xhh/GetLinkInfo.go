@@ -5,6 +5,7 @@ import (
 	"io"
 	"strconv"
 	"xhhrobot/ai"
+	"xhhrobot/config"
 	"xhhrobot/db"
 	"xhhrobot/loger"
 
@@ -71,15 +72,15 @@ func GetLinkInfo(LinkID int, CommentID int) (Contents []ai.Content, Topics []ai.
 			Contents = append(Contents, content)
 			continue
 		}
-		if v.Type != "text" {
-			content.Type = "image_url"
-			content.ImgUrl.Url = v.Url
+		if v.Type == "text" {
+			content.Type = "text"
+			content.Text = v.Text
 			Contents = append(Contents, content)
-			continue
+		} else if config.ConfigStruct.Ai.SendImage {
+			content.Type = "image_url"
+			content.ImgUrl = &ai.ImgUrlField{Url: v.Url}
+			Contents = append(Contents, content)
 		}
-		content.Type = "text"
-		content.Text = v.Text
-		Contents = append(Contents, content)
 	}
 	return Contents, RespS.Result.Link.Topics, RespS.Result.Link.Tags
 }

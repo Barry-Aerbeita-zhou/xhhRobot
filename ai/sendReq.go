@@ -11,12 +11,14 @@ import (
 	"go.uber.org/zap"
 )
 
+type ImgUrlField struct {
+	Url string `json:"url"`
+}
+
 type Content struct {
-	Type   string `json:"type"`
-	ImgUrl struct {
-		Url string `json:"url"`
-	} `json:"image_url"`
-	Text string `json:"text"`
+	Type   string       `json:"type"`
+	ImgUrl *ImgUrlField `json:"image_url,omitempty"`
+	Text   string       `json:"text,omitempty"`
 }
 type Messages[T []Content | string] struct {
 	Role    string `json:"role"`
@@ -76,10 +78,17 @@ func SendReq(Model string, Msg []any) (Jresp respStruct) {
 	}
 
 	Dresp, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		loger.Loger.Error("[Ai]请求返回非200状态码", zap.Int("statusCode", resp.StatusCode), zap.String("body", string(Dresp)))
+		return
+	}
 	err = json.Unmarshal(Dresp, &Jresp)
 	if err != nil {
 		loger.Loger.Error("[Ai]无法反序列化JSON", zap.Error(err), zap.String("body", string(Dresp)))
 		return
+	}
+	if len(Jresp.Choices) == 0 {
+		loger.Loger.Warn("[Ai]AI返回了空的Choices", zap.String("body", string(Dresp)))
 	}
 
 	return Jresp

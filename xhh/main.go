@@ -111,34 +111,35 @@ func AutoReply() {
 		loger.Loger.Info("[XHH]正在回复评论", zap.Int("评论数", len(Arr)))
 		wg.Add(len(Arr))
 		for _, v := range Arr {
-			go func() {
+			go func(v db.CommStruct) {
 				defer wg.Done()
-				if v.CommentID != 0 {
-					var isok bool
-					if Check(v.Uid) {
-						Info, top, tags := GetLinkInfo(v.LinkID, v.CommentID)
-						if len(Info) <= 1 {
-							loger.Loger.Info("[XHH]获取LinkID失败")
-							return
-						}
-						ReplyText := ai.GetAiReply(Info, v.Text, top, tags)
-						if ReplyText == "" {
-							loger.Loger.Info("[XHH]Ai返回错误")
-							return
-						}
-						isok = Reply(ReplyText, strconv.Itoa(v.LinkID), strconv.Itoa(v.CommentID), strconv.Itoa(v.RootID), "")
-
-					}
-					if isok {
-						db.Replyed(v.CommentID)
-					} else {
-						loger.Loger.Error("[XHH]无法回复评论")
-					}
-				} else {
-					wg.Done()
+				if v.CommentID == 0 {
 					fmt.Println("[XHH]无事可做")
+					return
 				}
-			}()
+				var isok bool
+				if Check(v.Uid) {
+					Info, top, tags := GetLinkInfo(v.LinkID, v.CommentID)
+					if len(Info) <= 1 {
+						loger.Loger.Warn("[XHH]获取LinkInfo失败，跳过此评论", zap.Int("CommentID", v.CommentID))
+						db.Replyed(v.CommentID)
+						return
+					}
+					ReplyText := ai.GetAiReply(Info, v.Text, top, tags)
+					if ReplyText == "" {
+						loger.Loger.Warn("[XHH]Ai返回为空，跳过此评论", zap.Int("CommentID", v.CommentID))
+						db.Replyed(v.CommentID)
+						return
+					}
+					isok = Reply(ReplyText, strconv.Itoa(v.LinkID), strconv.Itoa(v.CommentID), strconv.Itoa(v.RootID), "")
+				}
+				if isok {
+					db.Replyed(v.CommentID)
+				} else {
+					loger.Loger.Warn("[XHH]无法回复评论，跳过此评论", zap.Int("CommentID", v.CommentID))
+					db.Replyed(v.CommentID)
+				}
+			}(v)
 		}
 		wg.Wait()
 	}

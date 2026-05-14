@@ -48,6 +48,7 @@ func GetAiReply(Contents []Content, UserSay string, Topics []Topics, Tags []Tags
 	aiModel := config.ConfigStruct.Ai.Model
 	resp := SendReq(aiModel, Msgs)
 	if len(resp.Choices) == 0 {
+		loger.Loger.Warn("[Ai]AI未返回任何内容，请检查AI配置和网络连接")
 		return ""
 	}
 	text := resp.Choices[0].Msg.Content
